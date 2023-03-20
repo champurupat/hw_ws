@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from turtlesim.srv import Spawn, SetPen, TeleportAbsolute
+from turtlesim.srv import Kill, Spawn, SetPen, TeleportAbsolute
 from turtlesim.msg import Pose
 from std_srvs.srv import Empty
 from math import pi, atan2
@@ -13,12 +13,17 @@ class ServiceHw(Node):
     def __init__(self):
         super().__init__('problem_3') # super() calls the Node parent class
 
+        # create Reset client for default turtlesim services
+        self.reset = self.create_client(Empty, '/reset') # srv_name is the existing service (server)
+        while not self.reset.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('RESET_DEBUG:service not available, waiting again...')
+        self.reset_req = Empty.Request()
+
         # Create Clear client for default turtlesim services
         self.clear = self.create_client(Empty, '/clear')
         while not self.clear.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('CLEAR_DEBUG:service not available, waiting again...')
         self.clear_req = Empty.Request()
-
 
         # Create SetPen client for default turtlesim services
         self.setpen = self.create_client(SetPen, '/turtle1/set_pen') # srv_name is the existing service (server)
@@ -37,15 +42,21 @@ class ServiceHw(Node):
         while not self.spawn.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('SPAWN_DEBUG:service not available, waiting again...')
         self.spawn_req = Spawn.Request()
+
+        # Create Kill client for  turtlesim services
+        self.kill = self.create_client(Kill, '/kill') # srv_name is the existing service (server)
+        while not self.kill.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('KILL_DEBUG:service not available, waiting again...')
+        self.kill_req = Kill.Request()
         
         self.usv_x = None
         self.usv_y = None
 
     def send_request(self):
-        def clear_routine():
-            self.future = self.clear.call_async(self.clear_req)
-            rclpy.spin_until_future_complete(self, self.future)
-            
+        # clean up
+        self.future = self.reset.call_async(self.reset_req)
+        rclpy.spin_until_future_complete(self, self.future)
+
         # SetPen service parameters
         self.setpen_req.r = 0
         self.setpen_req.g = 0
@@ -54,8 +65,8 @@ class ServiceHw(Node):
         self.setpen_req.off = 0
         self.future = self.setpen.call_async(self.setpen_req)
         rclpy.spin_until_future_complete(self, self.future)
-        clear_routine()
 
+        # draw the coordinate axes
         coordinates = [(20.0, 10.0),
                         (20.0, 15.0),
                         (20.0, 5.0),
@@ -69,7 +80,13 @@ class ServiceHw(Node):
             self.future = self.teleport.call_async(self.teleport_req)
             rclpy.spin_until_future_complete(self, self.future)    
             if i == 0:
-                clear_routine()
+                self.future = self.clear.call_async(self.clear_req)
+                rclpy.spin_until_future_complete(self, self.future)
+
+        # remove drawing turtle
+        self.kill_req.name = 'turtle1'
+        self.future = self.kill.call_async(self.kill_req)
+        rclpy.spin_until_future_complete(self, self.future)
         
         self.spawn_req.x = 20.0
         self.spawn_req.y = 10.0
@@ -77,6 +94,8 @@ class ServiceHw(Node):
         self.spawn_req.name = 'usv'
         self.future = self.spawn.call_async(self.spawn_req)
         rclpy.spin_until_future_complete(self, self.future)
+
+        # create subscriber for usv pose flexibility
         self.subscriber_node = rclpy.create_node('usv_checker')
         self.subscription = self.subscriber_node.create_subscription(
                 Pose,
@@ -85,22 +104,27 @@ class ServiceHw(Node):
                 10)
         self.subscription
 
+        # waiting function so data exists before continuing
         while self.usv_x == None:
             rclpy.spin_once(self.subscriber_node, timeout_sec=1.0)
+        
+        abs_obstacle_x = 25.0
+        abs_obstacle_y = 15.0
 
-        self.spawn_req.x = 25.0
-        self.spawn_req.y = 15.0
-        self.spawn_req.theta = -(pi - atan2(self.usv_y, self.usv_x))
-        self.spawn_req.name = 'obstacle'
-        self.future = self.spawn.call_async(self.spawn_req)
-        rclpy.spin_until_future_complete(self, self.future)
+        rel_obstacle_x = abs_obstacle_x - self.usv_x
+        rel_obstacle_y = abs_obstacle_y - self.usv_y
 
-        self.spawn_req.x = 5.0 
-        self.spawn_req.y = 5.0
-        self.spawn_req.theta = pi/2
-        self.spawn_req.name = 'observer'
-        self.future = self.spawn.call_async(self.spawn_req)
-        rclpy.spin_until_future_complete(self, self.future)
+        vector_angle = -(pi - atan2(rel_obstacle_y, rel_obstacle_x))
+        spawn_parameters = [(25.0, 15.0, vector_angle, 'obstacle'),
+                            (5.0, 5.0, pi/2, 'observer')]
+
+        for turtles in spawn_parameters:
+            self.spawn_req.x = turtles[0]
+            self.spawn_req.y = turtles[1]
+            self.spawn_req.theta = turtles[2]
+            self.spawn_req.name = turtles[3]
+            self.future = self.spawn.call_async(self.spawn_req)
+            rclpy.spin_until_future_complete(self, self.future)
 
     def sub_callback(self, msg):
         self.usv_x = msg.x
