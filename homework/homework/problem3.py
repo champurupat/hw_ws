@@ -32,7 +32,6 @@ class ServiceHw(Node):
 
     def send_request(self):
         def clear_routine():
-            self.clear_req
             self.future = self.clear.call_async(self.clear_req)
             rclpy.spin_until_future_complete(self, self.future)
             
@@ -56,11 +55,10 @@ class ServiceHw(Node):
             self.teleport_req.x = x
             self.teleport_req.y = y
             self.teleport_req.theta = 0.0
-            if i == 0:
-                self.get_logger().info('i=1')
-                clear_routine()
             self.future = self.teleport.call_async(self.teleport_req)
             rclpy.spin_until_future_complete(self, self.future)    
+            if i == 0:
+                clear_routine()
 
 def main(args=None):
     rclpy.init()
