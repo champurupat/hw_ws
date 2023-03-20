@@ -3,7 +3,9 @@
 import rclpy
 from rclpy.node import Node
 from turtlesim.srv import Spawn, SetPen, TeleportAbsolute
+from turtlesim.msg import Pose
 from std_srvs.srv import Empty
+from math import pi, atan2
 
 
 class ServiceHw(Node):
@@ -29,6 +31,15 @@ class ServiceHw(Node):
         while not self.teleport.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('TELEPORT_DEBUG:service not available, waiting again...')
         self.teleport_req = TeleportAbsolute.Request()
+
+        # Create Spawn client for default turtlesim services
+        self.spawn = self.create_client(Spawn, '/spawn') # srv_name is the existing service (server)
+        while not self.spawn.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('SPAWN_DEBUG:service not available, waiting again...')
+        self.spawn_req = Spawn.Request()
+        
+        self.usv_x = None
+        self.usv_y = None
 
     def send_request(self):
         def clear_routine():
@@ -59,6 +70,41 @@ class ServiceHw(Node):
             rclpy.spin_until_future_complete(self, self.future)    
             if i == 0:
                 clear_routine()
+        
+        self.spawn_req.x = 20.0
+        self.spawn_req.y = 10.0
+        self.spawn_req.theta = 0.0
+        self.spawn_req.name = 'usv'
+        self.future = self.spawn.call_async(self.spawn_req)
+        rclpy.spin_until_future_complete(self, self.future)
+        self.subscriber_node = rclpy.create_node('usv_checker')
+        self.subscription = self.subscriber_node.create_subscription(
+                Pose,
+                '/usv/pose',
+                self.sub_callback,
+                10)
+        self.subscription
+
+        while self.usv_x == None:
+            rclpy.spin_once(self.subscriber_node, timeout_sec=1.0)
+
+        self.spawn_req.x = 25.0
+        self.spawn_req.y = 15.0
+        self.spawn_req.theta = -(pi - atan2(self.usv_y, self.usv_x))
+        self.spawn_req.name = 'obstacle'
+        self.future = self.spawn.call_async(self.spawn_req)
+        rclpy.spin_until_future_complete(self, self.future)
+
+        self.spawn_req.x = 5.0 
+        self.spawn_req.y = 5.0
+        self.spawn_req.theta = pi/2
+        self.spawn_req.name = 'observer'
+        self.future = self.spawn.call_async(self.spawn_req)
+        rclpy.spin_until_future_complete(self, self.future)
+
+    def sub_callback(self, msg):
+        self.usv_x = msg.x
+        self.usv_y = msg.y
 
 def main(args=None):
     rclpy.init()
