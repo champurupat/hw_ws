@@ -1,0 +1,11 @@
+digraph G {
+"ENU" -> "observer"[label=" Broadcaster: default_authority\nAverage rate: 62.711\nBuffer length: 4.752\nMost recent transform: 1679385835.608224\nOldest transform: 1679385830.856262\n"];
+"world" -> "ENU"[label=" Broadcaster: default_authority\nAverage rate: 188.046\nBuffer length: 4.738\nMost recent transform: 1679385835.607942\nOldest transform: 1679385830.869744\n"];
+"ENU" -> "NED"[label=" Broadcaster: default_authority\nAverage rate: 188.052\nBuffer length: 4.738\nMost recent transform: 1679385835.608091\nOldest transform: 1679385830.870045\n"];
+"ENU" -> "usv"[label=" Broadcaster: default_authority\nAverage rate: 62.703\nBuffer length: 4.737\nMost recent transform: 1679385835.606872\nOldest transform: 1679385830.870225\n"];
+"ENU" -> "obstacle"[label=" Broadcaster: default_authority\nAverage rate: 62.702\nBuffer length: 4.737\nMost recent transform: 1679385835.607623\nOldest transform: 1679385830.870899\n"];
+edge [style=invis];
+ subgraph cluster_legend { style=bold; color=black; label ="view_frames Result";
+"Recorded at time: 1679385835.6212747"[ shape=plaintext ] ;
+}->"world";
+}
