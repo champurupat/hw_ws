@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'problem3 = homework.problem3:main',
+            'problem5 = homework.problem5:main',
         ],
     },
 )
