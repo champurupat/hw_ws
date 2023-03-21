@@ -11,53 +11,46 @@ from math import pi, atan2
 class ServiceHw(Node):
 
     def __init__(self):
-        super().__init__('problem_3') # super() calls the Node parent class
+        # super() calls the Node parent class
+        super().__init__('problem_3') 
 
-        # create Reset client for default turtlesim services
-        self.reset = self.create_client(Empty, '/reset') # srv_name is the existing service (server)
-        while not self.reset.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('RESET_DEBUG:service not available, waiting again...')
-        self.reset_req = Empty.Request()
-
-        # Create Clear client for default turtlesim services
-        self.clear = self.create_client(Empty, '/clear')
+        # create Clear client for default turtlesim services
+        self.clear = self.create_client(Empty, '/Patrick_turtlesim/clear')
         while not self.clear.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('CLEAR_DEBUG:service not available, waiting again...')
         self.clear_req = Empty.Request()
 
-        # Create SetPen client for default turtlesim services
-        self.setpen = self.create_client(SetPen, '/turtle1/set_pen') # srv_name is the existing service (server)
+        # create SetPen client for default turtlesim services
+        self.setpen = self.create_client(SetPen, '/Patrick_turtlesim/turtle1/set_pen') # srv_name is the existing service (server)
         while not self.setpen.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('SETPEN_DEBUG:service not available, waiting again...')
         self.setpen_req = SetPen.Request()
 
-        # Create TeleportAbsolute client for default turtlesim services
-        self.teleport = self.create_client(TeleportAbsolute, '/turtle1/teleport_absolute') # srv_name is the existing service (server)
+        # create TeleportAbsolute client for default turtlesim services
+        self.teleport = self.create_client(TeleportAbsolute, '/Patrick_turtlesim/turtle1/teleport_absolute') # srv_name is the existing service (server)
         while not self.teleport.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('TELEPORT_DEBUG:service not available, waiting again...')
         self.teleport_req = TeleportAbsolute.Request()
 
-        # Create Spawn client for default turtlesim services
-        self.spawn = self.create_client(Spawn, '/spawn') # srv_name is the existing service (server)
+        # create Spawn client for default turtlesim services
+        self.spawn = self.create_client(Spawn, '/Patrick_turtlesim/spawn') # srv_name is the existing service (server)
         while not self.spawn.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('SPAWN_DEBUG:service not available, waiting again...')
         self.spawn_req = Spawn.Request()
 
-        # Create Kill client for  turtlesim services
-        self.kill = self.create_client(Kill, '/kill') # srv_name is the existing service (server)
+        # create Kill client for  turtlesim services
+        self.kill = self.create_client(Kill, '/Patrick_turtlesim/kill') # srv_name is the existing service (server)
         while not self.kill.wait_for_service(timeout_sec=1.0):
             self.get_logger().info('KILL_DEBUG:service not available, waiting again...')
         self.kill_req = Kill.Request()
         
+        # attributes to be accessed later
         self.usv_x = None
         self.usv_y = None
 
     def send_request(self):
-        # clean up
-        self.future = self.reset.call_async(self.reset_req)
-        rclpy.spin_until_future_complete(self, self.future)
-
-        # SetPen service parameters
+        # all services are called in order
+        # SetPen service parameters for black
         self.setpen_req.r = 0
         self.setpen_req.g = 0
         self.setpen_req.b = 0
@@ -66,6 +59,7 @@ class ServiceHw(Node):
         self.future = self.setpen.call_async(self.setpen_req)
         rclpy.spin_until_future_complete(self, self.future)
 
+        # spawning parameters are in absolute coordinates unless stated otherwise
         # draw the coordinate axes
         coordinates = [(20.0, 10.0),
                         (20.0, 15.0),
@@ -99,7 +93,7 @@ class ServiceHw(Node):
         self.subscriber_node = rclpy.create_node('usv_checker')
         self.subscription = self.subscriber_node.create_subscription(
                 Pose,
-                '/usv/pose',
+                '/Patrick_turtlesim/usv/pose',
                 self.sub_callback,
                 10)
         self.subscription
@@ -108,16 +102,16 @@ class ServiceHw(Node):
         while self.usv_x == None:
             rclpy.spin_once(self.subscriber_node, timeout_sec=1.0)
         
+        # obstacle parameters and calculations
         abs_obstacle_x = 25.0
         abs_obstacle_y = 15.0
-
         rel_obstacle_x = abs_obstacle_x - self.usv_x
         rel_obstacle_y = abs_obstacle_y - self.usv_y
-
         vector_angle = -(pi - atan2(rel_obstacle_y, rel_obstacle_x))
         spawn_parameters = [(25.0, 15.0, vector_angle, 'obstacle'),
                             (5.0, 5.0, pi/2, 'observer')]
 
+        # spawn the obstacle and observer
         for turtles in spawn_parameters:
             self.spawn_req.x = turtles[0]
             self.spawn_req.y = turtles[1]
@@ -126,7 +120,9 @@ class ServiceHw(Node):
             self.future = self.spawn.call_async(self.spawn_req)
             rclpy.spin_until_future_complete(self, self.future)
 
+    # callback function to update attributes
     def sub_callback(self, msg):
+        # absolute coordinates from usv spawn
         self.usv_x = msg.x
         self.usv_y = msg.y
 
@@ -134,7 +130,6 @@ def main(args=None):
     rclpy.init()
     problem3 = ServiceHw()
     problem3.send_request()
-    # problem3.get_logger().info()
     problem3.destroy_node()
     rclpy.shutdown()
 
