@@ -91,11 +91,11 @@ class FramePublisher(Node):
         self.tf_broadcaster.sendTransform(t_boat)
     
     def handle_obstacle_pose(self, msg):
-        t_world = self.transform_constructor('world', 'ENU', 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
-        self.tf_broadcaster.sendTransform(t_world)
-        t_coord = self.transform_constructor('ENU', 'NED', 20.0, 10.0, 0.0, np.pi/2, 0.0, np.pi)
-        self.tf_broadcaster.sendTransform(t_coord)
-        t_obstacle = self.transform_constructor('ENU', self.obstaclename, msg.x, msg.y, 0.0, msg.theta, 0.0, 0.0)
+        # t_world = self.transform_constructor('world', 'ENU', 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
+        # self.tf_broadcaster.sendTransform(t_world)
+        # t_coord = self.transform_constructor('ENU', 'NED', 20.0, 10.0, 0.0, np.pi/2, 0.0, np.pi)
+        # self.tf_broadcaster.sendTransform(t_coord)
+        t_obstacle = self.transform_constructor(self.observername, self.obstaclename, msg.x, msg.y, 0.0, msg.theta, 0.0, 0.0)
         self.tf_broadcaster.sendTransform(t_obstacle)
     
     def handle_observer_pose(self, msg):
